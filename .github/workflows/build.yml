@@ -1,4 +1,4 @@
-name: Build Executables
+name: Build and Release
 
 on:
   push:
@@ -16,17 +16,15 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install faster-whisper pyinstaller
+        run: pip install faster-whisper pyinstaller
 
       - name: Build Mac app
-        run: |
-          pyinstaller --onedir --windowed --name Transcriber -y transcriber_gui.py
+        run: pyinstaller --onedir --windowed --name Transcriber -y transcriber_gui.py
 
       - name: Zip Mac app
         run: cd dist && zip -r Transcriber-Mac.zip Transcriber.app
 
-      - name: Upload Mac app
+      - name: Upload Mac artifact
         uses: actions/upload-artifact@v4
         with:
           name: Transcriber-Mac
@@ -43,15 +41,46 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install faster-whisper pyinstaller
+        run: pip install faster-whisper pyinstaller
 
       - name: Build Windows exe
-        run: |
-          pyinstaller --onefile --windowed --name Transcriber transcriber_gui.py
+        run: pyinstaller --onefile --windowed --name Transcriber -y transcriber_gui.py
 
-      - name: Upload Windows exe
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: Transcriber-Windows
           path: dist/Transcriber.exe
+
+  release:
+    needs: [build-mac, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Mac artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Transcriber-Mac
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Transcriber-Windows
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Transcriber - Latest Build
+          body: |
+            ## Download
+
+            - **Mac**: Download `Transcriber-Mac.zip`, unzip, and double-click `Transcriber.app`
+            - **Windows**: Download `Transcriber.exe` and double-click to run
+
+            > First run will download the Whisper model (~150MB). Internet connection required.
+          files: |
+            Transcriber-Mac.zip
+            Transcriber.exe
+          make_latest: true
