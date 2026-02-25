@@ -1,0 +1,54 @@
+name: Build Executables
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install faster-whisper pyinstaller
+
+      - name: Build Mac app
+        run: |
+          pyinstaller --onefile --windowed --name Transcriber transcriber_gui.py
+
+      - name: Upload Mac app
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transcriber-Mac
+          path: dist/Transcriber.app
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install faster-whisper pyinstaller
+
+      - name: Build Windows exe
+        run: |
+          pyinstaller --onefile --windowed --name Transcriber transcriber_gui.py
+
+      - name: Upload Windows exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transcriber-Windows
+          path: dist/Transcriber.exe
