@@ -6,47 +6,35 @@ Supports English and Tagalog
 
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-import subprocess
 import threading
 import os
 import sys
-
 
 SUPPORTED_EXTENSIONS = {'.mp3', '.mp4', '.mov', '.m4a', '.wav', '.avi', '.mkv', '.aac', '.flac'}
 
 
 def transcribe_file(file_path, language, with_timestamps, log_callback):
+    from faster_whisper import WhisperModel
+
     ext = os.path.splitext(file_path)[1].lower()
     if ext not in SUPPORTED_EXTENSIONS:
         log_callback(f'Skipped (unsupported format): {os.path.basename(file_path)}')
         return None
 
     log_callback(f'Processing: {os.path.basename(file_path)}')
+    log_callback('Loading model... (first time may take a while)')
 
-    result = subprocess.run(
-        ['whisper-ctranslate2', file_path, '--language', language, '--model', 'small'],
-        capture_output=True, text=True
-    )
+    model = WhisperModel('tiny', device='cpu', compute_type='int8')
 
-    raw_output = result.stdout or result.stderr
-    if not raw_output.strip():
-        log_callback('Error: No output received.')
-        return None
+    log_callback('Transcribing...')
+    segments, info = model.transcribe(file_path, language=language)
 
     lines = []
-    for line in raw_output.splitlines():
-        line = line.strip()
-        if not line:
-            continue
+    for segment in segments:
         if with_timestamps:
-            lines.append(line)
+            lines.append(f'[{segment.start:.2f}s --> {segment.end:.2f}s]  {segment.text.strip()}')
         else:
-            if '-->' in line:
-                text = line.split(']', 1)[-1].strip()
-                if text:
-                    lines.append(text)
-            else:
-                lines.append(line)
+            lines.append(segment.text.strip())
 
     return '\n'.join(lines)
 
@@ -72,7 +60,6 @@ class TranscriberApp:
         self._build_ui()
 
     def _build_ui(self):
-        # タイトル
         tk.Label(
             self.root, text='🎙 Video / Audio Transcriber',
             font=('Helvetica', 16, 'bold'), bg='#1e1e2e', fg='#cdd6f4'
@@ -83,7 +70,6 @@ class TranscriberApp:
             font=('Helvetica', 11), bg='#1e1e2e', fg='#6c7086'
         ).pack()
 
-        # ファイル選択
         file_frame = tk.Frame(self.root, bg='#1e1e2e')
         file_frame.pack(pady=16, padx=24, fill='x')
 
@@ -107,7 +93,6 @@ class TranscriberApp:
         )
         self.file_label.pack(side='left', padx=12)
 
-        # 言語選択
         lang_frame = tk.Frame(self.root, bg='#1e1e2e')
         lang_frame.pack(pady=4, padx=24, fill='x')
 
@@ -128,7 +113,6 @@ class TranscriberApp:
             activebackground='#1e1e2e', font=('Helvetica', 12)
         ).pack(side='left', padx=(8, 0))
 
-        # タイムスタンプ
         ts_frame = tk.Frame(self.root, bg='#1e1e2e')
         ts_frame.pack(pady=4, padx=24, fill='x')
 
@@ -140,7 +124,6 @@ class TranscriberApp:
             activebackground='#1e1e2e', font=('Helvetica', 12)
         ).pack(side='left')
 
-        # 開始ボタン
         self.start_btn = tk.Button(
             self.root, text='Start Transcription',
             command=self.start_transcription,
@@ -149,11 +132,9 @@ class TranscriberApp:
         )
         self.start_btn.pack(pady=16)
 
-        # プログレスバー
         self.progress = ttk.Progressbar(self.root, mode='indeterminate', length=500)
         self.progress.pack(pady=(0, 8))
 
-        # ログ
         log_frame = tk.Frame(self.root, bg='#1e1e2e')
         log_frame.pack(padx=24, fill='both', expand=True, pady=(0, 20))
 
