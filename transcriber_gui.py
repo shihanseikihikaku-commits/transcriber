@@ -192,11 +192,14 @@ class TranscriberApp:
         completed = 0
 
         for file_path in self.files:
-            content = transcribe_file(file_path, language, with_timestamps, self.log)
-            if content:
-                out_path = save_transcript(file_path, content)
-                self.log(f'Saved: {os.path.basename(out_path)}\n')
-                completed += 1
+            try:
+                content = transcribe_file(file_path, language, with_timestamps, self.log)
+                if content:
+                    out_path = save_transcript(file_path, content)
+                    self.log(f'Saved: {os.path.basename(out_path)}\n')
+                    completed += 1
+            except Exception as e:
+                self.log(f'Error ({os.path.basename(file_path)}): {e}\n')
 
         self.root.after(0, self.on_done, completed)
 
